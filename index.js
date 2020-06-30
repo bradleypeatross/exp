@@ -2,6 +2,7 @@ const express = require('express')
 const app = express()
 const port = 3000
 var bodyParser = require('body-parser');
+const db = require('./db')
 
 // Create application/x-www-form-urlencoded parser
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
@@ -20,25 +21,187 @@ app.get('/', (req, res) => {
 
 var students = []
 
-function addStudent(first,last){
+//add to local
+async function addStudentToLocal(first,last){
     student = {
         name:first,
         last:last,
         id:students.length,
         grades:[],
     }
-    students.push(student)
+    return new Promise(students.push(student))
+    
+    console.log("add student ",students)
+
+    //add to database:
 }
 
-function addGrade(studentID,className,gradeLetter){
+//add to local
+function addGradeToLocal(studentID,className,gradeLetter){
     newGrade = {
         className:className,
         grade:gradeLetter
     }
-    students[studentID].grades.push(newGrade);
+    //console.log("add Grade:",students)
+    students[studentID-1].grades.push(newGrade);
 }
 
+//add to db
+function addGrade(studentID,className,gradeLetter){
+    db.query(`INSERT INTO grades (user_id, class, grade) VALUES('${studentID}','${className}','${gradeLetter}')`
+    , (err, results) => {
+        if(err){
+            console.log(err)
+        } else {
+            console.log("all good "+err);
+            
+        }
+    })
+}
+
+//add to db
+function addStudent(first,last){
+    //add to database:
+    //console.log(`INSERT INTO students (firstName, lastName) VALUES("${first}","${last}")`)
+    db.query(`INSERT INTO students (firstName, lastName) VALUES('${first}','${last}')`
+    , (err, results) => {
+        if(err){
+            console.log(err)
+        } else {
+            console.log("all good "+err);
+            
+        }
+    })
+
+
+
+
+
+}
+function populateLocal() {
+    //query db, populate datea
+
+    ;(async () => {
+        const results = await db.query(`SELECT * from students`)
+
+        //console.log("got all from students")
+        results.rows.forEach((row) => {
+            //console.log(row.firstname, row.lastname)
+
+            student = {
+                name:row.firstname,
+                last:row.lastname,
+                id:students.length,
+                grades:[],
+            }
+            students.push(student)
+            console.log(students)
+
+            //await addStudentToLocal(row.firstname,row.lastname)
+            //console.log (`SELECT * from grades where user_id = ${row.user_id}`) 
+            
+            
+            ;(async () => {
+                const grades = await db.query(`SELECT * from grades where user_id = ${row.user_id}`)
+                grades.rows.forEach((grade) => {
+                    //console.log(grade.class, grade.grade)
+                    addGradeToLocal(grade.user_id,grade.class,grade.grade)
+                }) 
+              })().catch(err =>
+                setImmediate(() => {
+                  console.log(err)
+                })
+              )
+
+
+            // await db.query(`SELECT * from grades where user_id = ${row.user_id}`)
+            // .then(grades => {                   
+            //         grades.rows.forEach((grade) => {
+            //             console.log(grade.class, grade.grade)
+            //             addGradeToLocal(grade.user_id,grade.class,grade.grade)
+            //         })                    
+            // }).catch(err =>{
+            //     setImmediate(() => {
+            //         throw err
+            //       })
+                
+            // })
+            
+        })
+        //replace local data with what was pulled form db
+        //students = results.rows;
+      })().catch(err =>
+        setImmediate(() => {
+          console.log(err)
+        })
+      )
+
+      console.log("in db function")
+
+
+
+    // await db.query(`SELECT * from students`)
+    // .then(results => {
+        
+        
+            
+    //         //console.log("got all from students")
+    //         results.rows.forEach((row) => {
+    //             //console.log(row.firstname, row.lastname)
+    //             addStudentToLocal(row.firstname,row.lastname)
+    //             //console.log (`SELECT * from grades where user_id = ${row.user_id}`) 
+                
+                
+    //             ;(async () => {
+    //                 const grades = await db.query(`SELECT * from grades where user_id = ${row.user_id}`)
+    //                 grades.rows.forEach((grade) => {
+    //                     console.log(grade.class, grade.grade)
+    //                     addGradeToLocal(grade.user_id,grade.class,grade.grade)
+    //                 }) 
+    //               })().catch(err =>
+    //                 setImmediate(() => {
+    //                   console.log(err)
+    //                 })
+    //               )
+
+
+    //             // await db.query(`SELECT * from grades where user_id = ${row.user_id}`)
+    //             // .then(grades => {                   
+    //             //         grades.rows.forEach((grade) => {
+    //             //             console.log(grade.class, grade.grade)
+    //             //             addGradeToLocal(grade.user_id,grade.class,grade.grade)
+    //             //         })                    
+    //             // }).catch(err =>{
+    //             //     setImmediate(() => {
+    //             //         throw err
+    //             //       })
+                    
+    //             // })
+                
+    //         })
+    //         //replace local data with what was pulled form db
+    //         //students = results.rows;
+        
+
+    // })
+    // .catch (err =>{
+    //     setImmediate(() => {
+    //         throw err
+    //       })
+        
+//})
+    
+    
+}
+
+
+
 app.get('/students', (req, res) => {
+    
+
+    students = []
+    populateLocal()
+    console.log(students);
 
     var queryName = req.query.name
     console.log(req.query);
