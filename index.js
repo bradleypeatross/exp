@@ -78,7 +78,7 @@ function addStudent(first,last){
 
 
 }
-function populateLocal() {
+async function populateLocal() {
     //query db, populate datea
 
     ;(async () => {
